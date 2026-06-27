@@ -1,0 +1,9 @@
+{
+	"id": "knowledge-sync",
+	"name": "闪记",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "闪记助手 — 从闪记服务端拉取笔记到 Obsidian",
+	"author": "henushang",
+	"isDesktopOnly": false
+}
