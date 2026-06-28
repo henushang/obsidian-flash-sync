@@ -1,9 +1,10 @@
 {
-	"id": "knowledge-sync",
-	"name": "闪记",
+	"id": "obsidian-flash-sync",
+	"name": "闪记同步",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "闪记助手 — 从闪记服务端拉取笔记到 Obsidian",
+	"description": "从闪记助手同步笔记到 Obsidian，配对码连接、自动同步、主题分文件",
 	"author": "henushang",
+	"authorUrl": "",
 	"isDesktopOnly": false
 }
