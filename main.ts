@@ -132,31 +132,41 @@ export default class KnowledgeSyncPlugin extends Plugin {
 		const content = n.content || '';
 		const filePaths: string[] = n.file_paths || [];
 		const timeStr = (n.created_at || '').slice(0, 16).replace('T', ' ');
-
 		const safeTopic = topic.replace(/[/\\:*?"<>|]/g, '-').trim() || '未分类';
 		const folder = '闪记助手';
 		await this.ensureFolder(folder);
-		const mdPath = `${folder}/${safeTopic}.md`;
 
-		// 构建追加内容
-		const lines: string[] = [];
-		lines.push('');
-		lines.push(`## ${timeStr}`);
-		lines.push('');
-		if (content) lines.push(content, '');
-		for (const fp of filePaths) {
-			const imgUrl = this.settings.serverUrl + '/obsidian-inbox/' + fp;
-			lines.push(`![${fp}](${imgUrl})`, '');
-		}
-		lines.push('---', '');
-		const entry = lines.join('\n');
-
-		if (!(await this.app.vault.adapter.exists(mdPath))) {
-			const header = `# ${topic}\n\n> 自动同步自闪记助手\n\n`;
-			await this.app.vault.create(mdPath, header + entry);
+		if (n.source === 'article') {
+			const baseName = (n.title || String(n.id)).replace(/[/\\:*?"<>|]/g, '-').trim() || '未命名';
+			const dir = `${folder}/${safeTopic}`;
+			await this.ensureFolder(dir);
+			let mdPath = `${dir}/${baseName}.md`;
+			let counter = 1;
+			while (await this.app.vault.adapter.exists(mdPath)) {
+				mdPath = `${dir}/${baseName}_${counter}.md`;
+				counter++;
+			}
+			const md = `# ${n.title || ''}\n\n> 同步自闪记助手 · ${timeStr}\n\n---\n\n${content}\n`;
+			await this.app.vault.create(mdPath, md);
 		} else {
-			const existing = await this.app.vault.adapter.read(mdPath);
-			await this.app.vault.adapter.write(mdPath, existing + entry);
+			const mdPath = `${folder}/${safeTopic}.md`;
+			const lines: string[] = [];
+			lines.push('');
+			lines.push(`## ${timeStr}`);
+			lines.push('');
+			if (content) lines.push(content, '');
+			for (const fp of filePaths) {
+				const imgUrl = this.settings.serverUrl + '/obsidian-inbox/' + fp;
+				lines.push(`![${fp}](${imgUrl})`, '');
+			}
+			lines.push('---', '');
+			const entry = lines.join('\n');
+			if (!(await this.app.vault.adapter.exists(mdPath))) {
+				await this.app.vault.create(mdPath, `# ${topic}\n\n> 自动同步自闪记助手\n\n${entry}`);
+			} else {
+				const existing = await this.app.vault.adapter.read(mdPath);
+				await this.app.vault.adapter.write(mdPath, existing + entry);
+			}
 		}
 	}
 

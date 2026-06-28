@@ -129,28 +129,48 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
     const safeTopic = topic.replace(/[/\\:*?"<>|]/g, "-").trim() || "\u672A\u5206\u7C7B";
     const folder = "\u95EA\u8BB0\u52A9\u624B";
     await this.ensureFolder(folder);
-    const mdPath = `${folder}/${safeTopic}.md`;
-    const lines = [];
-    lines.push("");
-    lines.push(`## ${timeStr}`);
-    lines.push("");
-    if (content) lines.push(content, "");
-    for (const fp of filePaths) {
-      const imgUrl = this.settings.serverUrl + "/obsidian-inbox/" + fp;
-      lines.push(`![${fp}](${imgUrl})`, "");
-    }
-    lines.push("---", "");
-    const entry = lines.join("\n");
-    if (!await this.app.vault.adapter.exists(mdPath)) {
-      const header = `# ${topic}
+    if (n.source === "article") {
+      const baseName = (n.title || String(n.id)).replace(/[/\\:*?"<>|]/g, "-").trim() || "\u672A\u547D\u540D";
+      const dir = `${folder}/${safeTopic}`;
+      await this.ensureFolder(dir);
+      let mdPath = `${dir}/${baseName}.md`;
+      let counter = 1;
+      while (await this.app.vault.adapter.exists(mdPath)) {
+        mdPath = `${dir}/${baseName}_${counter}.md`;
+        counter++;
+      }
+      const md = `# ${n.title || ""}
+
+> \u540C\u6B65\u81EA\u95EA\u8BB0\u52A9\u624B \xB7 ${timeStr}
+
+---
+
+${content}
+`;
+      await this.app.vault.create(mdPath, md);
+    } else {
+      const mdPath = `${folder}/${safeTopic}.md`;
+      const lines = [];
+      lines.push("");
+      lines.push(`## ${timeStr}`);
+      lines.push("");
+      if (content) lines.push(content, "");
+      for (const fp of filePaths) {
+        const imgUrl = this.settings.serverUrl + "/obsidian-inbox/" + fp;
+        lines.push(`![${fp}](${imgUrl})`, "");
+      }
+      lines.push("---", "");
+      const entry = lines.join("\n");
+      if (!await this.app.vault.adapter.exists(mdPath)) {
+        await this.app.vault.create(mdPath, `# ${topic}
 
 > \u81EA\u52A8\u540C\u6B65\u81EA\u95EA\u8BB0\u52A9\u624B
 
-`;
-      await this.app.vault.create(mdPath, header + entry);
-    } else {
-      const existing = await this.app.vault.adapter.read(mdPath);
-      await this.app.vault.adapter.write(mdPath, existing + entry);
+${entry}`);
+      } else {
+        const existing = await this.app.vault.adapter.read(mdPath);
+        await this.app.vault.adapter.write(mdPath, existing + entry);
+      }
     }
   }
   async ensureFolder(path) {
