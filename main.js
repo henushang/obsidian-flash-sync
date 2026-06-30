@@ -146,7 +146,8 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
         mdPath = `${dir}/${baseName}_${counter}.md`;
         counter++;
       }
-      const articleContent = n.article_text || content;
+      if (!n.article_text) console.warn("[flash-sync] article without text:", n.id, n.title);
+      const articleContent = n.article_text || content || "(\u6682\u65E0\u6B63\u6587)";
       const md = `> \u539F\u6587\uFF1A${content}
 
 ---
