@@ -66,12 +66,12 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
     this.addSettingTab(new SyncSettingTab(this.app, this));
     this.statusBar = this.addStatusBarItem();
     this.statusBar.style.cursor = "pointer";
-    this.statusBar.onclick = () => this.doSync().then((msg) => new import_obsidian.Notice(msg));
+    this.statusBar.onclick = () => this.doSync().then((msg) => this._notify(msg));
     this.updateStatus();
     this.addCommand({
       id: "sync-now",
       name: "\u7ACB\u5373\u540C\u6B65",
-      callback: () => this.doSync().then((msg) => new import_obsidian.Notice(msg))
+      callback: () => this.doSync().then((msg) => this._notify(msg))
     });
     this.startAutoSync();
   }
@@ -97,6 +97,10 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
     return data;
   }
   // ── 全量同步（清除记录重新同步） ──
+  // 不弹通知的同步（无新增时静默）
+  _notify(msg) {
+    if (msg.includes("\u65B0\u589E")) new import_obsidian.Notice(msg);
+  }
   async forceSync() {
     this.settings.syncedIds = [];
     await this.saveSettings();
