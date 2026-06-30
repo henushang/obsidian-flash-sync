@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-flash-sync",
 	"name": "闪记同步",
-	"version": "1.0.2",
+	"version": "1.0.5",
 	"minAppVersion": "0.15.0",
 	"description": "从闪记助手同步笔记到 Obsidian，配对码连接、自动同步、主题分文件",
 	"author": "henushang",
