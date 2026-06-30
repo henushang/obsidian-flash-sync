@@ -96,6 +96,12 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
     await this.saveSettings();
     return data;
   }
+  // ── 全量同步（清除记录重新同步） ──
+  async forceSync() {
+    this.settings.syncedIds = [];
+    await this.saveSettings();
+    return this.doSync();
+  }
   // ── 同步 ──
   async doSync() {
     if (!this.settings.token) return "\u274C \u672A\u767B\u5F55\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u8F93\u5165\u914D\u5BF9\u7801";
@@ -130,7 +136,8 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
     const folder = "\u95EA\u8BB0\u52A9\u624B";
     await this.ensureFolder(folder);
     if (n.source === "article") {
-      const baseName = (n.title || String(n.id)).replace(/[/\\:*?"<>|]/g, "-").trim() || "\u672A\u547D\u540D";
+      const datePrefix = (n.created_at || "").slice(0, 10) || "";
+      const baseName = (datePrefix ? datePrefix + "-" : "") + (n.title || String(n.id)).replace(/[/\\:*?"<>|]/g, "-").trim() || "\u672A\u547D\u540D";
       const dir = `${folder}/${safeTopic}`;
       await this.ensureFolder(dir);
       let mdPath = `${dir}/${baseName}.md`;
@@ -139,15 +146,31 @@ var KnowledgeSyncPlugin = class extends import_obsidian.Plugin {
         mdPath = `${dir}/${baseName}_${counter}.md`;
         counter++;
       }
-      const md = `# ${n.title || ""}
-
-> \u540C\u6B65\u81EA\u95EA\u8BB0\u52A9\u624B \xB7 ${timeStr}
+      const articleContent = n.article_text || content;
+      const md = `> \u539F\u6587\uFF1A${content}
 
 ---
 
-${content}
+${articleContent}
 `;
       await this.app.vault.create(mdPath, md);
+      const topicFile = `${folder}/${safeTopic}.md`;
+      const refLine = `
+## ${timeStr}
+
+\u{1F4C4} [${n.title || baseName}](${safeTopic}/${baseName}.md)
+
+---
+`;
+      if (await this.app.vault.adapter.exists(topicFile)) {
+        const existing = await this.app.vault.adapter.read(topicFile);
+        await this.app.vault.adapter.write(topicFile, existing + refLine);
+      } else {
+        await this.app.vault.create(topicFile, `# ${topic}
+
+> \u81EA\u52A8\u540C\u6B65\u81EA\u95EA\u8BB0\u52A9\u624B
+${refLine}`);
+      }
     } else {
       const mdPath = `${folder}/${safeTopic}.md`;
       const lines = [];
@@ -243,6 +266,11 @@ var SyncSettingTab = class extends import_obsidian.PluginSettingTab {
     }
     new import_obsidian.Setting(containerEl).setName("\u624B\u52A8\u540C\u6B65").setDesc("\u4ECE\u670D\u52A1\u5668\u62C9\u53D6\u7B14\u8BB0\u5230\u672C\u5730 Vault").addButton((b) => b.setButtonText("\u7ACB\u5373\u540C\u6B65").onClick(async () => {
       const msg = await this.plugin.doSync();
+      new import_obsidian.Notice(msg);
+      this.display();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u5168\u91CF\u540C\u6B65").setDesc("\u6E05\u9664\u540C\u6B65\u8BB0\u5F55\uFF0C\u91CD\u65B0\u540C\u6B65\u6240\u6709\u7B14\u8BB0").addButton((b) => b.setButtonText("\u5168\u91CF\u540C\u6B65").onClick(async () => {
+      const msg = await this.plugin.forceSync();
       new import_obsidian.Notice(msg);
       this.display();
     }));

@@ -100,6 +100,13 @@ export default class KnowledgeSyncPlugin extends Plugin {
 		return data;
 	}
 
+	// ── 全量同步（清除记录重新同步） ──
+	async forceSync(): Promise<string> {
+		this.settings.syncedIds = [];
+		await this.saveSettings();
+		return this.doSync();
+	}
+
 	// ── 同步 ──
 	async doSync(): Promise<string> {
 		if (!this.settings.token) return '❌ 未登录，请在设置中输入配对码';
@@ -137,7 +144,8 @@ export default class KnowledgeSyncPlugin extends Plugin {
 		await this.ensureFolder(folder);
 
 		if (n.source === 'article') {
-			const baseName = (n.title || String(n.id)).replace(/[/\\:*?"<>|]/g, '-').trim() || '未命名';
+			const datePrefix = (n.created_at || '').slice(0, 10) || '';
+			const baseName = (datePrefix ? datePrefix + '-' : '') + (n.title || String(n.id)).replace(/[/\\:*?"<>|]/g, '-').trim() || '未命名';
 			const dir = `${folder}/${safeTopic}`;
 			await this.ensureFolder(dir);
 			let mdPath = `${dir}/${baseName}.md`;
@@ -146,8 +154,19 @@ export default class KnowledgeSyncPlugin extends Plugin {
 				mdPath = `${dir}/${baseName}_${counter}.md`;
 				counter++;
 			}
-			const md = `# ${n.title || ''}\n\n> 同步自闪记助手 · ${timeStr}\n\n---\n\n${content}\n`;
+			const articleContent = n.article_text || content;
+			const md = `> 原文：${content}\n\n---\n\n${articleContent}\n`;
 			await this.app.vault.create(mdPath, md);
+
+			// 追加引用到主题主文件
+			const topicFile = `${folder}/${safeTopic}.md`;
+			const refLine = `\n## ${timeStr}\n\n📄 [${n.title || baseName}](${safeTopic}/${baseName}.md)\n\n---\n`;
+			if (await this.app.vault.adapter.exists(topicFile)) {
+				const existing = await this.app.vault.adapter.read(topicFile);
+				await this.app.vault.adapter.write(topicFile, existing + refLine);
+			} else {
+				await this.app.vault.create(topicFile, `# ${topic}\n\n> 自动同步自闪记助手\n${refLine}`);
+			}
 		} else {
 			const mdPath = `${folder}/${safeTopic}.md`;
 			const lines: string[] = [];
@@ -262,6 +281,18 @@ class SyncSettingTab extends PluginSettingTab {
 				.setButtonText('立即同步')
 				.onClick(async () => {
 					const msg = await this.plugin.doSync();
+					new Notice(msg);
+					this.display();
+				}));
+
+		// 全量同步
+		new Setting(containerEl)
+			.setName('全量同步')
+			.setDesc('清除同步记录，重新同步所有笔记')
+			.addButton(b => b
+				.setButtonText('全量同步')
+				.onClick(async () => {
+					const msg = await this.plugin.forceSync();
 					new Notice(msg);
 					this.display();
 				}));
